@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?> 
+<RevitAddIns>
+	<AddIn Type = "Command">
+		<Assembly>C:\Program Files\Autodesk\RevitAddins\CreateModel.dll</Assembly>
+		<AddInId>EEDCA132-DB7A-4928-8A47-072133BDC00B</AddInId>
+		<FullClassName>CreateModel.Main</FullClassName>
+		<VendorId>ADSK</VendorId>
+		<Text>Создание модели</Text>
+	</AddIn>
+</RevitAddIns>
