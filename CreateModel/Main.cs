@@ -1,11 +1,9 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CreateModel
 {
@@ -32,14 +30,46 @@ namespace CreateModel
                 TaskDialog.Show("Ошибка", "Не удалось построить стены");
                 return Result.Failed;
             }
+
+            string doorFamilyName = "Одиночные-Щитовые";
+            string doorTypeName = "0915 x 2134 мм";
+            string windowFamilyName = "Фиксированные";
+            string windowTypeName = "0915 x 1830 мм";
+            FamilyInstance newDoor;
+            List<FamilyInstance> newWindows = new List<FamilyInstance>();
+
+            for (int i = 0; i < 4; i++)
+            {
+                if (i == 0)
+                {
+                    newDoor = CreateDoorOrWindowInCenterOfWall(doc, FamilySymbolType.Doors, doorFamilyName, doorTypeName, level1, walls[i]);
+                    if (newDoor == null)
+                    {
+                        TaskDialog.Show("Ошибка", "Не удалось создать дверь");
+                        return Result.Failed;
+                    }
+                }
+                else
+                {
+                    FamilyInstance newWindow = CreateDoorOrWindowInCenterOfWall(doc, FamilySymbolType.Windows, windowFamilyName, windowTypeName, level1, walls[i], 304);
+                    if (newWindow == null)
+                    {
+                        TaskDialog.Show("Ошибка", "Не удалось создать окна");
+                        return Result.Failed;
+                    }
+                    newWindows.Add(newWindow);
+                }
+            }
+
+
             return Result.Succeeded;
         }
 
-        public List<Wall> CreateWallsToRectangle(Document document, 
-                                                 double width, 
-                                                 double depth, 
-                                                 Level baseLevel, 
-                                                 Level upLevel, 
+        public List<Wall> CreateWallsToRectangle(Document document,
+                                                 double width,
+                                                 double depth,
+                                                 Level baseLevel,
+                                                 Level upLevel,
                                                  bool isStructural)
         {
             if (baseLevel == null || upLevel == null)
@@ -59,12 +89,12 @@ namespace CreateModel
             List<XYZ> points = new List<XYZ>()
             {
                 new XYZ(-dx, -dy, 0),
-                new XYZ(dx, -dy, 0),
-                new XYZ(dx, dy, 0),
                 new XYZ(-dx, dy, 0),
+                new XYZ(dx, dy, 0),
+                new XYZ(dx, -dy, 0),
                 new XYZ(-dx, -dy, 0)
             };
-            using(Transaction ts = new Transaction(document, "Создание контура стен"))
+            using (Transaction ts = new Transaction(document, "Создание контура стен"))
             {
                 ts.Start();
                 for (int i = 0; i < 4; i++)
@@ -78,6 +108,54 @@ namespace CreateModel
             }
             return walls;
 
+        }
+
+        public FamilyInstance CreateDoorOrWindowInCenterOfWall(Document document,
+                                                       FamilySymbolType familySymbolType,
+                                                       string familyName,
+                                                       string typeName,
+                                                       Level level,
+                                                       Wall wall,
+                                                       double offset = 0)
+        {
+
+            FamilySymbol familySymbol = new FilteredElementCollector(document)
+                .OfClass(typeof(FamilySymbol))
+                .OfCategory((BuiltInCategory)familySymbolType)
+                .OfType<FamilySymbol>()
+                .Where(d => d.FamilyName.Equals(familyName))
+                .Where(d => d.Name.Equals(typeName))
+                .FirstOrDefault();
+
+            if (familySymbol == null || wall == null || level == null)
+            {
+                return null;
+            }
+
+            LocationCurve wallCurve = wall.Location as LocationCurve;
+            XYZ centerPoint = wallCurve.Curve.Evaluate(0.5, true);
+
+            if (!familySymbol.IsActive)
+            {
+                familySymbol.Activate();
+            }
+
+            FamilyInstance newFamilyInstance;
+            using (Transaction ts = new Transaction(document, "Создание дверей/окон"))
+            {
+                ts.Start();
+                newFamilyInstance = document.Create.NewFamilyInstance(centerPoint, familySymbol, wall, level, StructuralType.NonStructural);
+                newFamilyInstance.get_Parameter(BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM)
+                                 .Set(UnitUtils.ConvertToInternalUnits(offset, UnitTypeId.Millimeters));
+                ts.Commit();
+            }
+            return newFamilyInstance;
+        }
+
+        public enum FamilySymbolType
+        {
+            Doors = BuiltInCategory.OST_Doors,
+            Windows = BuiltInCategory.OST_Windows
         }
     }
 }
