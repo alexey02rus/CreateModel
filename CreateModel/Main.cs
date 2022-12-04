@@ -187,7 +187,7 @@ namespace CreateModel
             double dY = UnitUtils.ConvertToInternalUnits(depth / 2.0, UnitTypeId.Millimeters);
             double dX = UnitUtils.ConvertToInternalUnits(width / 2.0, UnitTypeId.Millimeters);
             double dZ = baseLevel.Elevation + offset;
-            double dH = dZ + UnitUtils.ConvertToInternalUnits(hight, UnitTypeId.Millimeters);
+            double dH = dZ - offset + UnitUtils.ConvertToInternalUnits(hight, UnitTypeId.Millimeters);
 
             CurveArray sketchRoof = new CurveArray();
             sketchRoof.Append(Line.CreateBound(new XYZ(0, dY, dZ), new XYZ(0, 0, dH)));
